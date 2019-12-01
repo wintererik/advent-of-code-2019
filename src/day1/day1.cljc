@@ -14,9 +14,7 @@
   (->>
     file-data
     str/split-lines
-    (map read-string)
-    )
-  )
+    (map read-string)))
 
 
 (defn calculate-fuel
@@ -39,6 +37,26 @@
        (map calculate-fuel)
        (reduce +)))
 
+(defn calculate-fuel-incl-fuel-mass
+  {:test (fn []
+           (is (= (calculate-fuel-incl-fuel-mass 14) 2))
+           (is (= (calculate-fuel-incl-fuel-mass 1969) 966))
+           (is (= (calculate-fuel-incl-fuel-mass 100756) 50346))
+           )}
+  [module-mass]
+  (loop [masses []
+         next-fuel-mass (calculate-fuel module-mass)]
+    (if (> next-fuel-mass 0)
+      (recur (conj masses next-fuel-mass) (calculate-fuel next-fuel-mass))
+      (reduce + masses))))
+
+(defn run-part-two []
+  (->> (read-input)
+       (parse-input)
+       (map calculate-fuel-incl-fuel-mass)
+       (reduce +)))
+
 (comment
   (run-part-one)
+  (run-part-two)
   )
