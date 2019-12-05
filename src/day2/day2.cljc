@@ -4,7 +4,7 @@
     [clojure.string :as str]))
 
 (defn read-input []
-  (slurp "src/day2/input.txt"))
+  (slurp "src/day2/input-eget.txt"))
 
 (defn parse-input
   {:test (fn []
@@ -52,15 +52,32 @@
         program
         (recur (handle-opcode program opcode-index) (+ opcode-index 4))))))
 
+(defn prepare-program
+  {:test (fn []
+           (is (= (prepare-program [0,0,0,0,0] 123 456) [123,456,0,0,0]))
+           )}
+  [program a b]
+  (-> program
+      (assoc 1 a)
+      (assoc 2 b)
+      ))
+
 (defn run-part-one []
   (-> (read-input)
        (parse-input)
-       (assoc 1 12)
-       (assoc 2 2)
+       (prepare-program 12 2)
        (run-program)
        (first)
        ))
 
+(defn run-part-two []
+  (let [program (parse-input (read-input))]
+    (some (fn [[noun verb]]
+            (let [result (first (run-program (prepare-program program noun verb)))]
+              (if (= 19690720 result) (+ (* 100 noun) verb))))
+          (for [noun (range 100) verb (range 100)] [noun verb]))))
+
 (comment
   (run-part-one)
+  (run-part-two)
   )
