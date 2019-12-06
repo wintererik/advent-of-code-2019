@@ -4,7 +4,7 @@
     [clojure.string :as str]))
 
 (defn read-input []
-  (slurp "src/day2/input-eget.txt"))
+  (slurp "src/day2/input.txt"))
 
 (defn parse-input
   {:test (fn []
