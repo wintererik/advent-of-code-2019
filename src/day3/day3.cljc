@@ -81,10 +81,48 @@
         intersections (clojure.set/intersection wire-1-coords wire-2-coords)]
     (apply min (map manhattan (disj intersections [0 0])))))
 
+
 (defn run-part-one []
   (let [[wire-1 wire-2] (str/split-lines (read-input))]
     (solve-part-one wire-1 wire-2)))
 
+(defn count-steps
+  {:test (fn []
+           (is (= (count-steps [[0 0] [1 0] [2 0] [2 1] [2 2]] [2 1]) 3))
+           )}
+  [wire-coords target-pos]
+  (first (keep-indexed #(when (= target-pos %2) %1) wire-coords)))
+
+(defn solve-part-two
+  {:test (fn []
+           (is (= (solve-part-two
+                    "R2,D3"
+                    "D3,R5") 10))
+           (is (= (solve-part-two
+                    "R75,D30,R83,U83,L12,D49,R71,U7,L72"
+                    "U62,R66,U55,R34,D71,R55,D58,R83") 610))
+           (is (= (solve-part-two
+                    "R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51"
+                    "U98,R91,D20,R16,D67,R40,U7,R15,U6,R7") 410))
+           )}
+  [wire-1 wire-2]
+  (let [wire-1-coords (get-wire-coords (parse-wire wire-1))
+        wire-2-coords (get-wire-coords (parse-wire wire-2))
+        intersections (clojure.set/intersection (set wire-1-coords) (set wire-2-coords))]
+    (reduce (fn [result intersection]
+              (let [wire-1-steps (count-steps wire-1-coords intersection)
+                    wire-2-steps (count-steps wire-2-coords intersection)
+                    total-steps (+ wire-1-steps wire-2-steps)
+                    ]
+                (Math/min result total-steps)))
+            2134567
+            (disj intersections [0 0]))))
+
+(defn run-part-two []
+  (let [[wire-1 wire-2] (str/split-lines (read-input))]
+    (solve-part-two wire-1 wire-2)))
+
 (comment
   (run-part-one)
+  (run-part-two)
   )
