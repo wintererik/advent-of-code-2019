@@ -34,15 +34,40 @@
   [number]
   (and (has-double? number) (non-decreasing? number)))
 
-(defn solve-part-one
+(defn solve
   {:test (fn []
-           (is (= (solve-part-one 111111 111111) 1))
-           (is (= (solve-part-one 111110 111112) 2))
+           (is (= (solve possible-password? 111111 111111) 1))
+           (is (= (solve possible-password? 111110 111112) 2))
            )}
-  [min max]
-  (count (filter possible-password?
+  [password-verifier min max]
+  (count (filter password-verifier
                  (range min (inc max)))))
 
+(defn has-pure-double?
+  {:test (fn []
+           (is (has-pure-double? 112233))
+           (is (has-pure-double? 111122))
+           (is (not (has-pure-double? 123444)))
+           )}
+  [number]
+  (->> number
+       (str)
+       (partition-by identity)
+       (filter (fn [group-with-identicals] (= 2 (count group-with-identicals))))
+       ((fn [double-groups] (> (count double-groups) 0)))))
+
+(defn stricter-possible-password?
+  {:test (fn []
+           (is (stricter-possible-password? 112233))
+           (is (stricter-possible-password? 111122))
+           (is (not (stricter-possible-password? 111111)))
+           (is (not (stricter-possible-password? 223450)))
+           (is (not (stricter-possible-password? 123789)))
+           )}
+  [number]
+  (and (has-pure-double? number) (non-decreasing? number)))
+
 (comment
-  (solve-part-one 183564 657474)
+  (solve possible-password? 183564 657474)
+  (solve stricter-possible-password? 183564 657474)
   )
