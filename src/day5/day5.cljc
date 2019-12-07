@@ -36,6 +36,10 @@
                       2 3
                       3 1
                       4 1
+                      5 2
+                      6 2
+                      7 3
+                      8 3
                       99 0)
         param-modes (loop [params [] counter param-count param-instr (quot op-header 100)]
                       (if (= counter 0)
@@ -57,13 +61,13 @@
 
 (defn handle-instruction
   {:test (fn []
-           (is (= (handle-instruction [1, 0, 0, 0, 99] 1 [0 0 0] [0 0 0]) {:p [2, 0, 0, 0, 99]}))
-           (is (= (handle-instruction [1002, 4, 3, 4, 33] 2 [4 3 4] [0 1 0]) {:p [1002, 4, 3, 4, 99]}))
-           (is (= (handle-instruction [3, 2, 0, 0, 0] 3 [2] [0]) {:p [3, 2, 1, 0, 0]}))
-           (is (= (handle-instruction [4, 2, 3] 4 [2] [0]) {:p [4, 2, 3] :o 3}))
-           (is (= (handle-instruction [104, 2, 3] 4 [2] [1]) {:p [104, 2, 3] :o 2}))
+           (is (= (handle-instruction [1, 0, 0, 0, 99] 1 [0 0 0] [0 0 0] 1) {:p [2, 0, 0, 0, 99]}))
+           (is (= (handle-instruction [1002, 4, 3, 4, 33] 2 [4 3 4] [0 1 0] 1) {:p [1002, 4, 3, 4, 99]}))
+           (is (= (handle-instruction [3, 2, 0, 0, 0] 3 [2] [0] 1) {:p [3, 2, 1, 0, 0]}))
+           (is (= (handle-instruction [4, 2, 3] 4 [2] [0] 1) {:p [4, 2, 3] :o 3}))
+           (is (= (handle-instruction [104, 2, 3] 4 [2] [1] 1) {:p [104, 2, 3] :o 2}))
            )}
-  [program opcode params param-modes]
+  [program opcode params param-modes input-value]
   ;  (println "hi" program opcode params param-modes)
   (case opcode
     1 (let [a (get-param program params param-modes 0)
@@ -75,20 +79,72 @@
             result-index (get params 2)]
         {:p (assoc program result-index (* a b))})
     3 (let [result-index (get params 0)]
-        {:p (assoc program result-index 1)})
+        {:p (assoc program result-index input-value)})
     4 (let [a (get-param program params param-modes 0)]
-        {:p program :o a})))
+        {:p program :o a})
+
+
+    5 (let [a (get-param program params param-modes 0)
+            b (get-param program params param-modes 1)]
+        {:p         program
+         :next-op-index (if (not (zero? a))
+                      b
+                      nil)})
+
+    6 (let [a (get-param program params param-modes 0)
+            b (get-param program params param-modes 1)]
+        {:p         program
+         :next-op-index (if (zero? a)
+                      b
+                      nil)})
+
+    7 (let [a (get-param program params param-modes 0)
+            b (get-param program params param-modes 1)
+            result-index (get params 2)]
+        {:p (assoc program result-index (if (< a b) 1 0))})
+    8 (let [a (get-param program params param-modes 0)
+            b (get-param program params param-modes 1)
+            result-index (get params 2)]
+        {:p (assoc program result-index (if (= a b) 1 0))})
+
+    ))
 
 (defn run-program
   {:test (fn []
-           (is (= (run-program [1, 0, 0, 0, 99]) {:p [2, 0, 0, 0, 99] :o []}))
-           (is (= (run-program [2, 3, 0, 3, 99]) {:p [2, 3, 0, 6, 99] :o []}))
-           (is (= (run-program [2, 4, 4, 5, 99, 0]) {:p [2, 4, 4, 5, 99, 9801] :o []}))
-           (is (= (run-program [1, 1, 1, 4, 99, 5, 6, 0, 99]) {:p [30, 1, 1, 4, 2, 5, 6, 0, 99] :o []}))
-           (is (= (run-program [104, 34, 99]) {:p [104, 34, 99] :o [34]}))
-           (is (= (run-program [1,1,1,7,4,7,99,0,0]) {:p [1,1,1,7,4,7,99,2,0] :o [2]}))
+           (is (= (run-program [1, 0, 0, 0, 99] 1) {:p [2, 0, 0, 0, 99] :o []}))
+           (is (= (run-program [2, 3, 0, 3, 99] 1) {:p [2, 3, 0, 6, 99] :o []}))
+           (is (= (run-program [2, 4, 4, 5, 99, 0] 1) {:p [2, 4, 4, 5, 99, 9801] :o []}))
+           (is (= (run-program [1, 1, 1, 4, 99, 5, 6, 0, 99] 1) {:p [30, 1, 1, 4, 2, 5, 6, 0, 99] :o []}))
+           (is (= (run-program [104, 34, 99] 1) {:p [104, 34, 99] :o [34]}))
+           (is (= (run-program [1, 1, 1, 7, 4, 7, 99, 0, 0] 1) {:p [1, 1, 1, 7, 4, 7, 99, 2, 0] :o [2]}))
+
+           (is (= (:o (run-program [3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8] 123)) [0]))
+           (is (= (:o (run-program [3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8] 8)) [1]))
+
+           (is (= (:o (run-program [3,9,7,9,10,9,4,9,99,-1,8] 7)) [1]))
+           (is (= (:o (run-program [3,9,7,9,10,9,4,9,99,-1,8] 8)) [0]))
+
+           (is (= (:o (run-program [3,3,1108,-1,8,3,4,3,99] 123)) [0]))
+           (is (= (:o (run-program [3,3,1108,-1,8,3,4,3,99] 8)) [1]))
+
+           (is (= (:o (run-program [3,3,1107,-1,8,3,4,3,99] 7)) [1]))
+           (is (= (:o (run-program [3,3,1107,-1,8,3,4,3,99] 8)) [0]))
+
+           (is (= (:o (run-program [3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9] 123)) [1]))
+           (is (= (:o (run-program [3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9] 0)) [0]))
+
+
+           (is (= (:o (run-program [3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,
+                                    1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,
+                                    999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99] 7)) [999]))
+           (is (= (:o (run-program [3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,
+                                    1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,
+                                    999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99] 8)) [1000]))
+           (is (= (:o (run-program [3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,
+                                    1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,
+                                    999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99] 9)) [1001]))
            )}
-  [program]
+  [program input-value]
   (loop [program program opcode-index 0 outputs []]
     ;(println "rp" program opcode-index outputs)
     (let [instruction (prepare-instruction program opcode-index)
@@ -98,9 +154,10 @@
         {:p program :o outputs}
         (let [result (handle-instruction program opcode
                                          (:params instruction)
-                                         (:param-modes instruction))]
+                                         (:param-modes instruction)
+                                         input-value)]
           (recur (:p result)
-                 (:next-op-index instruction)
+                 (or (:next-op-index result) (:next-op-index instruction))
                  (if (:o result)
                    (conj outputs (:o result))
                    outputs)))))))
@@ -109,11 +166,19 @@
 (defn run-part-one []
   (-> (read-input)
       (parse-input)
-      (run-program)
+      (run-program 1)
       (:o)
       (last)))
 
 
+(defn run-part-two []
+  (-> (read-input)
+      (parse-input)
+      (run-program 5)
+      (:o)
+      (last)))
+
 (comment
   (run-part-one)
+  (run-part-two)
   )
