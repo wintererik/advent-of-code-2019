@@ -1,7 +1,8 @@
 (ns day6.day6
   (:require
     [clojure.test :refer :all]
-    [clojure.string :as str]))
+    [clojure.string :as str]
+    [clojure.set :as set]))
 
 (defn read-input []
   (slurp "src/day6/input.txt"))
@@ -76,6 +77,45 @@
       (solve-part-one)))
 
 
+(defn get-path-to-COM
+  {:test (fn []
+           (is (= (get-path-to-COM {"C" "B", "D" "B", "B" "A", "A" "COM"} "C")
+                  ["B" "A" "COM"]))
+           )}
+  [child-to-parent-bindings start]
+  (loop [node (get child-to-parent-bindings start) result []]
+    (if (= node "COM")
+      (conj result node)
+      (recur (get child-to-parent-bindings node) (conj result node)))))
+
+(defn get-steps
+  {:test (fn []
+           (is (= (get-steps ["B" "A" "COM"] ["C" "A" "COM"]) 2))
+           (is (= (get-steps ["C" "B" "A" "COM"] ["D" "A" "COM"]) 3))
+           )}
+  [path-a path-b]
+  (count (set/difference
+           (set/union (set path-a) (set path-b))
+           (set/intersection (set path-a) (set path-b)))))
+
+(defn solve-part-two
+  {:test (fn []
+           (is (= (solve-part-two (parse-input "COM)B\nB)C\nC)D\nD)E\nE)F\nB)G\nG)H\nD)I\nE)J\nJ)K\nK)L\nK)YOU\nI)SAN"))
+                  4))
+           )}
+  [node-bindings]
+  (let [child-to-parent (reduce (fn [result [parent child]] (assoc result child parent)) {} node-bindings)
+        path-a (get-path-to-COM child-to-parent "YOU")
+        path-b (get-path-to-COM child-to-parent "SAN")
+        ]
+    (get-steps path-a path-b)))
+
+(defn run-part-two []
+  (->> (read-input)
+      (parse-input)
+      (solve-part-two)))
+
 (comment
   (run-part-one)
+  (run-part-two)
   )
