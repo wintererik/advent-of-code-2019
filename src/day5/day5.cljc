@@ -63,7 +63,7 @@
   {:test (fn []
            (is (= (handle-instruction [1, 0, 0, 0, 99] 1 [0 0 0] [0 0 0] [1]) {:p [2, 0, 0, 0, 99]}))
            (is (= (handle-instruction [1002, 4, 3, 4, 33] 2 [4 3 4] [0 1 0] [1]) {:p [1002, 4, 3, 4, 99]}))
-           (is (= (handle-instruction [3, 2, 0, 0, 0] 3 [2] [0] [1]) {:p [3, 2, 1, 0, 0] :i nil}))
+           (is (= (handle-instruction [3, 2, 0, 0, 0] 3 [2] [0] [1]) {:p [3, 2, 1, 0, 0] :i []}))
            (is (= (handle-instruction [4, 2, 3] 4 [2] [0] [1]) {:p [4, 2, 3] :o 3}))
            (is (= (handle-instruction [104, 2, 3] 4 [2] [1] [1]) {:p [104, 2, 3] :o 2}))
            )}
@@ -79,7 +79,7 @@
             result-index (get params 2)]
         {:p (assoc program result-index (* a b))})
     3 (let [result-index (get params 0)]
-        {:p (assoc program result-index (first input-values)) :i (next input-values)})
+        {:p (assoc program result-index (first input-values)) :i (or (next input-values) [])})
     4 (let [a (get-param program params param-modes 0)]
         {:p program :o a})
 
@@ -143,25 +143,41 @@
            (is (= (:o (run-program [3, 21, 1008, 21, 8, 20, 1005, 20, 22, 107, 8, 21, 20, 1006, 20, 31,
                                     1106, 0, 36, 98, 0, 0, 1002, 21, 125, 20, 4, 20, 1105, 1, 46, 104,
                                     999, 1105, 1, 46, 1101, 1000, 1, 20, 4, 20, 1105, 1, 46, 98, 99] [9])) [1001]))
+
+           ; A program reading more input than given is expected to halt
+           (is (= (run-program [3, 4, 3, 4, 99] [123]) {:p [3, 4, 3, 4, 123] :halted true :index 2 :o []}))
+
+           ; A program can be resumed
+           (is (= (run-program [3, 0, 3, 0, 4, 0, 99] [123] 2) {:p [123, 0, 3, 0, 4, 0, 99]:o [123]}))
+
            )}
-  [program inputs]
-  (loop [program program opcode-index 0 outputs [] inputs inputs]
-    ;(println "rp" program opcode-index outputs)
-    (let [instruction (prepare-instruction program opcode-index)
-          opcode (:opcode instruction)]
-      ;(println "rp2" instruction)
-      (if (= opcode 99)
-        {:p program :o outputs}
-        (let [result (handle-instruction program opcode
-                                         (:params instruction)
-                                         (:param-modes instruction)
-                                         inputs)]
-          (recur (:p result)
-                 (or (:next-op-index result) (:next-op-index instruction))
-                 (if (:o result)
-                   (conj outputs (:o result))
-                   outputs)
-                 (or (:i result) inputs)))))))
+  (
+   [program inputs]
+   (run-program program inputs 0))
+  ([program inputs current-index]
+   (loop [program program opcode-index current-index outputs [] inputs inputs]
+     ;(println "rp" program opcode-index outputs)
+     (let [instruction (prepare-instruction program opcode-index)
+           opcode (:opcode instruction)]
+       ;(println "rp2" instruction inputs)
+       (cond
+         (= opcode 99)
+         {:p program :o outputs}
+
+         (and (= opcode 3) (empty? inputs))
+         {:p program :o outputs :halted true :index opcode-index}
+
+         :else
+         (let [result (handle-instruction program opcode
+                                          (:params instruction)
+                                          (:param-modes instruction)
+                                          inputs)]
+           (recur (:p result)
+                  (or (:next-op-index result) (:next-op-index instruction))
+                  (if (:o result)
+                    (conj outputs (:o result))
+                    outputs)
+                  (or (:i result) inputs))))))))
 
 
 
